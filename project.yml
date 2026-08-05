@@ -1,0 +1,51 @@
+name: GigRoute
+options:
+  bundleIdPrefix: com.gigroute
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+packages:
+  SnapKit:
+    url: https://github.com/SnapKit/SnapKit
+    from: 5.7.0
+
+targets:
+  GigRoute:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/GigRoute
+    dependencies:
+      - package: SnapKit
+    info:
+      path: Sources/GigRoute/App/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: "Default Configuration"
+                UISceneDelegateClassName: "$(PRODUCT_MODULE_NAME).SceneDelegate"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gigroute.app
+        SWIFT_VERSION: 5.9
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    schemes:
+      GigRoute:
+        build:
+          targets:
+            GigRoute: all
+        test:
+          targets: []
+
+  GigRouteTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/GigRouteTests
+    dependencies:
+      - target: GigRoute

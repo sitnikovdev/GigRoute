@@ -1,0 +1,19 @@
+import UIKit
+
+final class MessagesCoordinator: Coordinator {
+
+    var childCoordinators: [Coordinator] = []
+    let navigationController = UINavigationController()
+
+    private let dependencies: AppDependencyContainer
+
+    init(dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
+    }
+
+    func start() {
+        let viewModel = MessagesViewModel(networkService: dependencies.networkService)
+        let viewController = MessagesViewController(viewModel: viewModel)
+        navigationController.setViewControllers([viewController], animated: false)
+    }
+}
