@@ -33,3 +33,5 @@ SnapKit подключается автоматически как SPM-зави�
 - iOS 15+
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 - [SwiftLint](https://github.com/realm/SwiftLint) (запускается локально и в CI)
+
+<- CI test -->
