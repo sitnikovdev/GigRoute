@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-lint-test:
-    runs-on: macos-14
+    runs-on: macos-26
 
     steps:
       - name: Checkout
@@ -17,7 +17,10 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '26.6'
+
+      - name: Show active Xcode version
+        run: xcodebuild -version
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -37,12 +40,40 @@ jobs:
             -project GigRoute.xcodeproj \
             -scheme GigRoute
 
+      - name: Find an available iPhone simulator
+        id: simulator
+        run: |
+          # Runner images rotate their simulator lineup with every Xcode
+          # update (iPhone 15 -> 16 -> 17, etc.), so a hardcoded device name
+          # goes stale every few months. Pick whatever iPhone simulator with
+          # the newest iOS runtime is actually present on this runner instead.
+          SELECTED=$(
+            xcodebuild -showdestinations -project GigRoute.xcodeproj -scheme GigRoute 2>/dev/null \
+              | grep -E "platform:iOS Simulator.*name:iPhone" \
+              | grep -oE "OS:[0-9.]+, name:iPhone[^}]*" \
+              | sed -E 's/OS:([0-9.]+), name:(.*)/\1|\2/' \
+              | sed -E 's/[[:space:]]+$//' \
+              | sort -t'|' -k1,1 -V -r \
+              | head -1
+          )
+
+          if [ -z "$SELECTED" ]; then
+            echo "::error::No iPhone simulator destination found on this runner."
+            exit 1
+          fi
+
+          OS_VERSION="${SELECTED%%|*}"
+          DEVICE_NAME="${SELECTED#*|}"
+          echo "Selected simulator: $DEVICE_NAME (iOS $OS_VERSION)"
+          echo "os=$OS_VERSION" >> "$GITHUB_OUTPUT"
+          echo "name=$DEVICE_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Build
         run: |
           xcodebuild build \
             -project GigRoute.xcodeproj \
             -scheme GigRoute \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Test
@@ -50,5 +81,5 @@ jobs:
           xcodebuild test \
             -project GigRoute.xcodeproj \
             -scheme GigRoute \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -destination "platform=iOS Simulator,name=${{ steps.simulator.outputs.name }},OS=${{ steps.simulator.outputs.os }}" \
             CODE_SIGNING_ALLOWED=NO
