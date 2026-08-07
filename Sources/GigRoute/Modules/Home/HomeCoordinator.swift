@@ -11,7 +11,7 @@ final class HomeCoordinator: Coordinator {
         self.dependencies = dependencies
     }
 
-    func start() {
+    @MainActor func start() {
         let viewModel = HomeViewModel(
             userService: dependencies.userService,
             slotStateStore: dependencies.slotStateStore

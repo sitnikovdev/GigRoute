@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 final class HomeViewModel: BaseViewModel {
 
     /// "Добрый вечер, Олег" once the user has loaded, greeting-only text

@@ -11,7 +11,7 @@ final class MessagesCoordinator: Coordinator {
         self.dependencies = dependencies
     }
 
-    func start() {
+    @MainActor func start() {
         let viewModel = MessagesViewModel(networkService: dependencies.networkService)
         let viewController = MessagesViewController(viewModel: viewModel)
         navigationController.setViewControllers([viewController], animated: false)

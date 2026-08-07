@@ -15,6 +15,7 @@ enum ViewState<Content> {
 /// call from `viewDidLoad`/`viewWillAppear`. Kept minimal on purpose —
 /// concrete view models add their own `Observable` properties for the UI to
 /// bind to.
+@MainActor
 protocol BaseViewModel: AnyObject {
     func onViewDidLoad()
 }
