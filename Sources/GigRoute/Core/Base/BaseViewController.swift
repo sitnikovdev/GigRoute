@@ -4,6 +4,7 @@ import UIKit
 /// and gives subclasses clearly named override points instead of relying
 /// on raw `viewDidLoad`. Views are built entirely in code + SnapKit —
 /// no Storyboards or XIBs anywhere in the project.
+@MainActor
 class BaseViewController: UIViewController {
 
     override func viewDidLoad() {

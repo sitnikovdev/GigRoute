@@ -11,7 +11,7 @@ final class ProfileCoordinator: Coordinator {
         self.dependencies = dependencies
     }
 
-    func start() {
+    @MainActor func start() {
         let viewModel = ProfileViewModel(networkService: dependencies.networkService)
         let viewController = ProfileViewController(viewModel: viewModel)
         navigationController.setViewControllers([viewController], animated: false)

@@ -17,3 +17,5 @@ DerivedData/
 # User-specific
 xcuserdata/
 *.xcuserstate
+
+Info.plist

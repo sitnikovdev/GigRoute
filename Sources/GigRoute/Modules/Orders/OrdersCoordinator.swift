@@ -11,7 +11,7 @@ final class OrdersCoordinator: Coordinator {
         self.dependencies = dependencies
     }
 
-    func start() {
+    @MainActor func start() {
         let viewModel = OrdersViewModel(networkService: dependencies.networkService)
         let viewController = OrdersViewController(viewModel: viewModel)
         navigationController.setViewControllers([viewController], animated: false)
