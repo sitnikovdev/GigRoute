@@ -12,7 +12,10 @@ final class HomeCoordinator: Coordinator {
     }
 
     func start() {
-        let viewModel = HomeViewModel(networkService: dependencies.networkService)
+        let viewModel = HomeViewModel(
+            userService: dependencies.userService,
+            slotStateStore: dependencies.slotStateStore
+        )
         let viewController = HomeViewController(viewModel: viewModel)
         navigationController.setViewControllers([viewController], animated: false)
     }
