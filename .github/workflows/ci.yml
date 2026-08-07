@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -21,6 +21,14 @@ jobs:
 
       - name: Show active Xcode version
         run: xcodebuild -version
+
+      - name: Remove untrusted default taps
+        run: |
+          # The runner image ships with aws/tap pre-tapped, which we never
+          # use. Recent Homebrew requires explicit trust for non-core taps
+          # and warns on every `brew install` while it's present. We don't
+          # need it, so drop it instead of disabling trust checks globally.
+          brew untap aws/tap || true
 
       - name: Install XcodeGen
         run: brew install xcodegen
