@@ -1,66 +1,66 @@
-# Архитектура
+# Architecture
 
-Проект генерируется через [XcodeGen](https://github.com/yonaskolb/XcodeGen)
-из `project.yml` — `.xcodeproj` не хранится в git, только исходники.
-UI строится полностью кодом с помощью SnapKit — Storyboard и XIB не
-используются.
+The project is generated via [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+from `project.yml` — `.xcodeproj` isn't stored in git, only the sources are.
+The UI is built entirely in code with SnapKit — no Storyboard or XIB is used.
 
-Этот файл — обзор верхнего уровня и указатель на подробную документацию
-по каждому компоненту. Детали и обоснования решений — в связанных файлах.
+This file is a top-level overview and an index into the detailed
+documentation for each component. Details and the reasoning behind
+decisions live in the linked files.
 
-## Подробная документация по компонентам
+## Detailed component documentation
 
-| Документ | О чём |
+| Document | What it covers |
 |---|---|
-| [project-setup.md](project-setup.md) | XcodeGen, `project.yml`, SPM-зависимости, почему без Storyboard/XIB, `.gitignore` |
-| [coordinator.md](coordinator.md) | Coordinator-паттерн: протокол, иерархия `AppCoordinator → TabBarCoordinator → *Coordinator`, правила навигации |
-| [mvvm.md](mvvm.md) | `Observable<T>`, `BaseViewModel`, `BaseViewController` — как связаны, зачем разделены `setupViews`/`setupConstraints`/`bindViewModel` |
-| [networking.md](networking.md) | `Endpoint`, `NetworkError`, `NetworkService` — контракт, реализация на `URLSession`, мокирование в тестах |
-| [dependency-injection.md](dependency-injection.md) | `AppDependencyContainer` — почему без DI-фреймворка, как зависимости передаются сверху вниз |
-| [theme.md](theme.md) | `AppColors` — статус "временное решение до M5" |
-| [ci-and-quality.md](ci-and-quality.md) | `.swiftlint.yml` и `.github/workflows/ci.yml` — что и почему проверяется на каждый PR |
+| [project-setup.md](project-setup.md) | XcodeGen, `project.yml`, SPM dependencies, why no Storyboard/XIB, `.gitignore` |
+| [coordinator.md](coordinator.md) | The Coordinator pattern: protocol, the `AppCoordinator → TabBarCoordinator → *Coordinator` hierarchy, navigation rules |
+| [mvvm.md](mvvm.md) | `Observable<T>`, `BaseViewModel`, `BaseViewController` — how they connect, why `setupViews`/`setupConstraints`/`bindViewModel` are separated |
+| [networking.md](networking.md) | `Endpoint`, `NetworkError`, `NetworkService` — the contract, the `URLSession`-based implementation, mocking in tests |
+| [dependency-injection.md](dependency-injection.md) | `AppDependencyContainer` — why no DI framework, how dependencies flow top-down |
+| [theme.md](theme.md) | `AppColors` — flagged as a "temporary solution until M5" |
+| [ci-and-quality.md](ci-and-quality.md) | `.swiftlint.yml` and `.github/workflows/ci.yml` — what's checked on every PR and why |
 
-## Структура папок
+## Folder structure
 
 ```
 Sources/GigRoute/
 ├── App/                 — AppDelegate, SceneDelegate, Info.plist
 ├── Core/
-│   ├── Coordinator/     — Coordinator-протокол, AppCoordinator, TabBarCoordinator
+│   ├── Coordinator/     — Coordinator protocol, AppCoordinator, TabBarCoordinator
 │   ├── Base/            — BaseViewController, BaseViewModel, Observable<T>
 │   ├── Networking/      — NetworkService, Endpoint, NetworkError
 │   ├── DI/              — AppDependencyContainer
-│   ├── Theme/           — дизайн-токены (цвета) — расширяется в M5
-│   ├── Models/          — модели данных, общие для нескольких модулей (добавлено в M1)
-│   ├── Services/        — сервисы уровня приложения, напр. UserService (добавлено в M1)
-│   └── State/           — общее состояние между табами, напр. SlotStateStore (добавлено в M1, расширится в M6)
+│   ├── Theme/           — design tokens (colors) — expands in M5
+│   ├── Models/          — data models shared across multiple modules (added in M1)
+│   ├── Services/        — app-level services, e.g. UserService (added in M1)
+│   └── State/           — state shared across tabs, e.g. SlotStateStore (added in M1, expands in M6)
 ├── Modules/
-│   ├── Home/            — Coordinator + ViewModel + ViewController таба "Главная"
-│   ├── Orders/          — таб "Заказы"
-│   ├── Messages/        — таб "Сообщения"
-│   └── Profile/         — таб "Профиль"
-└── Common/               — переиспользуемые UI-компоненты (заполняется в M5)
+│   ├── Home/            — Coordinator + ViewModel + ViewController for the "Home" tab
+│   ├── Orders/          — the "Orders" tab
+│   ├── Messages/        — the "Messages" tab
+│   └── Profile/         — the "Profile" tab
+└── Common/               — reusable UI components (filled in during M5)
 
-Tests/GigRouteTests/     — unit-тесты (XCTest)
+Tests/GigRouteTests/     — unit tests (XCTest)
 ```
 
-## Слои и правила
+## Layers and rules
 
-- **View (UIViewController)** — только UI и биндинг. Никакой бизнес-логики,
-  никаких прямых обращений к `NetworkService`.
-- **ViewModel** — вся логика экрана. Экспонирует состояние через
-  `Observable<T>`, ничего не знает про `UIKit` (это специально проверяется
-  отсутствием `import UIKit` в файлах ViewModel — если он там появился,
-  вероятно, логика не туда закралась).
-- **Coordinator** — вся навигация. ViewController не создаёт другие
-  ViewController и не пушит их напрямую — только вызывает замыкание/делегат,
-  который слушает Coordinator.
-- **Core/DI** — `AppDependencyContainer` создаётся один раз в
-  `SceneDelegate` и передаётся координаторам сверху вниз. Никаких синглтонов
-  уровня `.shared` для сервисов с состоянием (кроме `SlotStateStore` — он
-  про общее состояние по назначению, см. `dependency-injection.md`).
+- **View (UIViewController)** — UI and binding only. No business logic,
+  no direct calls to `NetworkService`.
+- **ViewModel** — all screen logic. Exposes state through `Observable<T>`,
+  knows nothing about `UIKit` (this is specifically checked by the absence
+  of `import UIKit` in ViewModel files — if it shows up there, logic has
+  probably leaked into the wrong place).
+- **Coordinator** — all navigation. A ViewController never creates another
+  ViewController or pushes it directly — it only calls a closure/delegate
+  that the Coordinator listens to.
+- **Core/DI** — `AppDependencyContainer` is created once in `SceneDelegate`
+  and passed down to coordinators top-down. No `.shared`-style singletons
+  for stateful services (except `SlotStateStore` — it's meant to be shared
+  state by design, see `dependency-injection.md`).
 
-## Каждый модуль (таб) состоит из
+## Every module (tab) consists of
 
 ```
 Modules/<Name>/
@@ -69,5 +69,5 @@ Modules/<Name>/
 └── <Name>ViewController.swift
 ```
 
-По мере роста модуля (M1–M4) сюда добавляются `Models/`, `Views/` (кастомные
-`UIView`-компоненты конкретного экрана) и `Cells/` при необходимости.
+As a module grows (M1–M4), `Models/`, `Views/` (screen-specific custom
+`UIView` components), and `Cells/` get added here as needed.

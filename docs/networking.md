@@ -1,30 +1,29 @@
 # Networking
 
-## Состав
+## Contents
 
 `Sources/GigRoute/Core/Networking/`
-- `Endpoint.swift` — описание одного запроса
-- `NetworkError.swift` — типизированные ошибки
-- `NetworkService.swift` — протокол + `URLSession`-реализация
+- `Endpoint.swift` — describes a single request
+- `NetworkError.swift` — typed errors
+- `NetworkService.swift` — protocol + `URLSession`-based implementation
 
-## Зачем протокол, а не сразу `URLSession`
+## Why a protocol instead of `URLSession` directly
 
-ViewModel зависят от протокола `NetworkService`, а не от конкретного
-`URLSessionNetworkService`. Это открывает два практических следствия:
+ViewModels depend on the `NetworkService` protocol, not on the concrete
+`URLSessionNetworkService`. That gives two practical benefits:
 
-1. **Тестируемость.** В `Tests/GigRouteTests/MockNetworkService.swift`
-   лежит тестовый дубль, который отдаёт заранее заданный `Result` вместо
-   похода в сеть — тесты ViewModel быстрые, детерминированные, не требуют
-   интернета/бэкенда.
-2. **Замена реализации без изменения вызывающего кода.** Если позже
-   понадобится, например, добавить логирование запросов или переключиться
-   на другой транспорт — меняется только `URLSessionNetworkService`,
-   ViewModel не трогаются вообще.
+1. **Testability.** `Tests/GigRouteTests/MockNetworkService.swift` holds
+   a test double that returns a pre-set `Result` instead of hitting the
+   network — ViewModel tests are fast, deterministic, and need no
+   internet/backend.
+2. **Swapping the implementation without touching callers.** If, say,
+   request logging or a different transport is needed later, only
+   `URLSessionNetworkService` changes — ViewModels aren't touched at all.
 
 ## `Endpoint`
 
-Описывает один запрос декларативно — путь, метод, query-параметры, тело,
-заголовки — и умеет собрать из этого `URLRequest`:
+Describes a single request declaratively — path, method, query
+parameters, body, headers — and can assemble a `URLRequest` from that:
 
 ```swift
 struct Endpoint {
@@ -38,8 +37,8 @@ struct Endpoint {
 }
 ```
 
-Конкретные эндпоинты API оформляются как статические фабрики поверх этого
-типа, когда появится реальный бэкенд, например:
+Concrete API endpoints get added as static factories on top of this type
+once a real backend exists, e.g.:
 
 ```swift
 extension Endpoint {
@@ -49,8 +48,8 @@ extension Endpoint {
 }
 ```
 
-На момент M0 таких фабрик нет намеренно — `Endpoint` типизирован и готов,
-но конкретные пути API ещё не согласованы.
+As of M0 there are deliberately no such factories yet — `Endpoint` is
+typed and ready, but the actual API paths haven't been agreed on yet.
 
 ## `NetworkError`
 
@@ -64,11 +63,11 @@ enum NetworkError: Error, Equatable {
 }
 ```
 
-Разделение на пять кейсов вместо одной строки-сообщения даёт вызывающему
-коду возможность реагировать по-разному: например, `httpStatus(401)` в
-будущем можно поймать отдельно и разлогинить пользователя, а `transport`
-(нет сети) — показать баннер "нет соединения" вместо общего "что-то пошло
-не так".
+Splitting into five cases instead of one message string lets calling
+code react differently: e.g. `httpStatus(401)` could later be caught
+separately to log the user out, while `transport` (no network) could
+show a "no connection" banner instead of a generic "something went
+wrong" for every error alike.
 
 ## `NetworkService`
 
@@ -78,8 +77,8 @@ protocol NetworkService {
 }
 ```
 
-Один универсальный дженерик-метод вместо метода на каждый тип ответа.
-Вызов выглядит так:
+One universal generic method instead of a method per response type. A
+call looks like this:
 
 ```swift
 let result = await networkService.request(.currentUser, as: User.self)
@@ -89,18 +88,19 @@ case .failure(let error): ...
 }
 ```
 
-Реализация `URLSessionNetworkService`:
+The `URLSessionNetworkService` implementation:
 
-- собирает `URLRequest` через `Endpoint.makeRequest`;
-- делает запрос через `URLSession.data(for:)` (async/await, без
-  completion-хендлеров и без сторонних библиотек вроде Alamofire — начиная
-  с iOS 15 `URLSession` умеет `async` нативно);
-- проверяет HTTP-статус (200..<300 — успех, иначе `.httpStatus`);
-- декодирует тело в `T` через `JSONDecoder`, ошибку декодирования
-  заворачивает в `.decoding` с исходным текстом ошибки — это сильно
-  ускоряет отладку рассинхрона моделей с реальным ответом API.
+- builds a `URLRequest` via `Endpoint.makeRequest`;
+- makes the request through `URLSession.data(for:)` (async/await, no
+  completion handlers and no third-party libraries like Alamofire —
+  since iOS 15, `URLSession` supports `async` natively);
+- checks the HTTP status (200..<300 — success, otherwise `.httpStatus`);
+- decodes the body into `T` via `JSONDecoder`, wrapping decoding errors
+  into `.decoding` with the original error text — this speeds up
+  debugging a lot when models drift out of sync with the real API
+  response.
 
-## Мокирование в тестах
+## Mocking in tests
 
 ```swift
 final class MockNetworkService: NetworkService {
@@ -114,16 +114,17 @@ final class MockNetworkService: NetworkService {
 }
 ```
 
-`requestedEndpoints` позволяет в тесте проверить не только "что вернул
-сервис", но и "какой именно запрос сделала ViewModel" — полезно, когда
-логика ViewModel сама решает, какой `Endpoint` дёрнуть (например, разная
-пагинация в зависимости от состояния).
+`requestedEndpoints` lets a test verify not just "what the service
+returned" but also "which request the ViewModel actually made" — useful
+when the ViewModel's own logic decides which `Endpoint` to hit (e.g.
+different pagination depending on state).
 
-## Где сейчас используется
+## Where it's used right now
 
-На момент M0/M1 реального бэкенда нет — `HomeViewModel` получает данные
-пользователя не через `NetworkService`, а через `UserService`
-(см. `docs/mvvm.md` и код `LocalUserService`), который в будущем
-переключится на `NetworkService` внутри, ничего не меняя в контракте для
-ViewModel. Сам `NetworkService` уже подключён в `AppDependencyContainer`
-и готов к использованию, как только появится первый реальный эндпоинт.
+As of M0/M1 there's no real backend — `HomeViewModel` gets user data not
+through `NetworkService` but through `UserService` (see `docs/mvvm.md`
+and the `LocalUserService` code), which will switch to using
+`NetworkService` internally in the future without changing its contract
+for the ViewModel. `NetworkService` itself is already wired up in
+`AppDependencyContainer` and ready to use as soon as the first real
+endpoint exists.

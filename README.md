@@ -1,18 +1,18 @@
 # GigRoute
 
-iOS-приложение для курьеров: слоты, заказы, карта, статистика.
+iOS app for couriers: slots, orders, map, stats.
 
-Стек: Swift, UIKit (UI только кодом, через SnapKit — без Storyboard/XIB),
+Stack: Swift, UIKit (UI built entirely in code via SnapKit — no Storyboard/XIB),
 MVVM, Coordinator.
 
-## Структура
+## Structure
 
-См. [docs/architecture.md](docs/architecture.md).
+See [docs/architecture.md](docs/architecture.md).
 
-## Запуск проекта
+## Running the project
 
-Проект не хранит `.xcodeproj` в git — он генерируется через
-[XcodeGen](https://github.com/yonaskolb/XcodeGen) из `project.yml`.
+The project doesn't store `.xcodeproj` in git — it's generated via
+[XcodeGen](https://github.com/yonaskolb/XcodeGen) from `project.yml`.
 
 ```bash
 brew install xcodegen
@@ -20,16 +20,16 @@ xcodegen generate
 open GigRoute.xcodeproj
 ```
 
-SnapKit подключается автоматически как SPM-зависимость при генерации
-проекта — руками в Xcode ничего добавлять не нужно.
+SnapKit is pulled in automatically as an SPM dependency when the project
+is generated — nothing to add manually in Xcode.
 
-## Разработка
+## Development
 
-См. [CONTRIBUTING.md](CONTRIBUTING.md) — конвенции веток, коммитов и PR.
+See [CONTRIBUTING.md](CONTRIBUTING.md) — branch, commit, and PR conventions.
 
-## Требования
+## Requirements
 
 - Xcode 15+
 - iOS 15+
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
-- [SwiftLint](https://github.com/realm/SwiftLint) (запускается локально и в CI)
+- [SwiftLint](https://github.com/realm/SwiftLint) (runs locally and in CI)

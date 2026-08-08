@@ -1,8 +1,8 @@
-# CI и качество кода
+# CI and Code Quality
 
 ## SwiftLint — `.swiftlint.yml`
 
-Правила разбиты на три группы:
+The rules are split into three groups:
 
 ```yaml
 opt_in_rules:
@@ -15,19 +15,21 @@ opt_in_rules:
   - unneeded_parentheses_in_closure_argument
   - vertical_whitespace_closing_braces
 ```
-Правила, которые SwiftLint по умолчанию не включает, но мы явно хотим —
-из них практически важнее всего **`force_unwrapping`**: запрещает `!` без
-явного обоснования. Одно текущее исключение — `URL(string: "...")!` в
-`AppDependencyContainer` для захардкоженного плейсхолдер-URL; когда там
-появится конфигурация из `.xcconfig`/окружения, форс-анврап уйдёт вместе с
-хардкодом.
+Rules SwiftLint doesn't enable by default but we explicitly want — the
+most important of these in practice is **`force_unwrapping`**: it bans
+`!` without an explicit justification. One current exception is
+`URL(string: "...")!` in `AppDependencyContainer` for the hardcoded
+placeholder URL; once that gets real configuration from
+`.xcconfig`/environment, the force-unwrap will go away along with the
+hardcoding.
 
 ```yaml
 disabled_rules:
   - todo
 ```
-`// TODO:` не считается предупреждением — на активной разработке они
-неизбежны и полезны как маркеры, спам от линтера по ним только мешает.
+`// TODO:` isn't treated as a warning — during active development
+they're inevitable and useful as markers, and linter spam about them
+just gets in the way.
 
 ```yaml
 line_length:
@@ -42,11 +44,11 @@ type_body_length:
   warning: 300
   error: 400
 ```
-Пороги "мягкий warning / жёсткий error" — превышение error-порога валит
-`swiftlint lint --strict` и, соответственно, CI. Числа не догма — если
-конкретный кейс упрётся в лимит по объективной причине, обсуждаем и
-двигаем порог в PR, а не отключаем правило точечным `// swiftlint:disable`
-без причины в комментарии.
+"Soft warning / hard error" thresholds — going over the error threshold
+fails `swiftlint lint --strict` and, in turn, CI. The numbers aren't
+dogma — if a specific case genuinely needs to exceed the limit, we
+discuss it and move the threshold in a PR, rather than disabling the
+rule locally via `// swiftlint:disable` without a comment explaining why.
 
 ## GitHub Actions — `.github/workflows/ci.yml`
 
@@ -57,18 +59,20 @@ on:
   push:
     branches: [main]
 ```
-Запуск на каждый PR в `main` и на каждый push в `main` (то есть и на сам
-PR, и повторно после merge — чтобы `main` тоже был гарантированно зелёным).
+Runs on every PR into `main` and on every push to `main` (i.e. on the PR
+itself, and again after merge — so `main` is also guaranteed to stay
+green).
 
 ```yaml
 runs-on: macos-26
 ```
-GitHub-хостед macOS-раннер — сборка iOS в принципе возможна только на
-macOS (нужен Xcode toolchain). `macos-26` — актуальный на данный момент
-образ; лейблы раннеров GitHub периодически обновляет и депрекейтит
-старые (см. историю: `macos-14` уходит в депрекацию с июля 2026) — если
-CI однажды начнёт падать с ошибкой "runner image not found", в первую
-очередь стоит проверить [список актуальных образов](https://github.com/actions/runner-images).
+A GitHub-hosted macOS runner — building iOS is only possible on macOS in
+the first place (an Xcode toolchain is required). `macos-26` is the
+current image as of now; GitHub periodically updates and deprecates
+runner labels (case in point: `macos-14` started deprecating in July
+2026) — if CI ever starts failing with a "runner image not found" error,
+the first thing to check is the
+[list of current images](https://github.com/actions/runner-images).
 
 ```yaml
 - name: Select Xcode
@@ -76,37 +80,37 @@ CI однажды начнёт падать с ошибкой "runner image not 
   with:
     xcode-version: latest-stable
 ```
-Явный выбор версии Xcode через готовый action, а не хардкод пути вида
-`/Applications/Xcode_15.4.app` — путь ломается при каждом обновлении
-образа раннера (версия Xcode в дефолте меняется чаще, чем сам лейбл
-раннера). `latest-stable` — сознательный выбор "плыть по течению" вместе
-с образом; если проекту понадобится жёстко зафиксировать конкретную
-версию Xcode (например, из-за регрессии в новой версии), сюда подставляется
-конкретное значение (`'16.4'`).
+Explicitly selecting the Xcode version through a ready-made action,
+rather than hardcoding a path like `/Applications/Xcode_15.4.app` — that
+path breaks on every runner image update (the default Xcode version
+changes more often than the runner label itself). `latest-stable` is a
+deliberate choice to "float" along with the image; if the project ever
+needs to pin a specific Xcode version (e.g. because of a regression in a
+newer one), a concrete value (`'16.4'`) goes here instead.
 
-Дальнейшие шаги — последовательный pipeline на одной и той же машине:
+The remaining steps form a sequential pipeline on the same machine:
 
-| Шаг | Команда | Что проверяет / готовит |
+| Step | Command | What it checks / prepares |
 |---|---|---|
-| Install XcodeGen | `brew install xcodegen` | нужен, т.к. `.xcodeproj` не в git — см. `docs/project-setup.md` |
-| Install SwiftLint | `brew install swiftlint` | линтер не предустановлен на раннере в нужной версии по умолчанию |
-| Lint | `swiftlint lint --strict` | падает при любом warning, не только error — это и есть gate качества |
-| Generate Xcode project | `xcodegen generate` | превращает `project.yml` в `GigRoute.xcodeproj` |
-| Resolve Swift packages | `xcodebuild -resolvePackageDependencies` | заранее качает SnapKit — отдельным шагом, чтобы сетевые тайминги не путались с временем сборки |
-| Build | `xcodebuild build ... CODE_SIGNING_ALLOWED=NO` | компиляция под симулятор; подпись не нужна — не собираем архив для публикации |
-| Test | `xcodebuild test ...` | прогоняет `Tests/GigRouteTests` (XCTest) на симуляторе |
+| Install XcodeGen | `brew install xcodegen` | needed since `.xcodeproj` isn't in git — see `docs/project-setup.md` |
+| Install SwiftLint | `brew install swiftlint` | the linter isn't pre-installed at the needed version on the runner by default |
+| Lint | `swiftlint lint --strict` | fails on any warning, not just errors — this is the quality gate |
+| Generate Xcode project | `xcodegen generate` | turns `project.yml` into `GigRoute.xcodeproj` |
+| Resolve Swift packages | `xcodebuild -resolvePackageDependencies` | fetches SnapKit ahead of time — as a separate step so network timing doesn't get mixed up with build time |
+| Build | `xcodebuild build ... CODE_SIGNING_ALLOWED=NO` | compiles for the simulator; no signing needed since we're not building a distributable archive |
+| Test | `xcodebuild test ...` | runs `Tests/GigRouteTests` (XCTest) on the simulator |
 
-Любой ненулевой код возврата на любом шаге — весь job красный. По
-конвенции из `CONTRIBUTING.md` PR нельзя мержить, пока CI не зелёный.
+Any non-zero exit code on any step turns the whole job red. Per the
+convention in `CONTRIBUTING.md`, a PR can't be merged until CI is green.
 
-## Чего в CI пока сознательно нет
+## What's deliberately not in CI yet
 
-- **Кеширование** SPM-пакетов и `DerivedData` (`actions/cache`) — при
-  единственной зависимости (SnapKit) выигрыш по времени сборки пока не
-  оправдывает добавляемую сложность конфигурации кеша;
-- **Матрица** по нескольким версиям iOS/Xcode — один таргет, тестировать
-  не на чем;
-- **Секреты и code signing** для TestFlight/App Store — появится вместе с
-  release-workflow в M7;
-- **Статус-бейдж** в README — можно добавить в любой момент, отдельным
-  `chore`-коммитом.
+- **Caching** SPM packages and `DerivedData` (`actions/cache`) — with a
+  single dependency (SnapKit), the build-time savings don't yet justify
+  the added cache-configuration complexity;
+- A **matrix** across multiple iOS/Xcode versions — there's only one
+  target, nothing to test a matrix against yet;
+- **Secrets and code signing** for TestFlight/App Store — will come with
+  the release workflow in M7;
+- A **status badge** in the README — can be added at any point, as a
+  separate `chore` commit.
