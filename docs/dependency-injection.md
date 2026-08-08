@@ -1,6 +1,6 @@
 # Dependency Injection
 
-## Файл
+## File
 
 `Sources/GigRoute/Core/DI/AppDependencyContainer.swift`
 
@@ -19,18 +19,18 @@ final class AppDependencyContainer {
 }
 ```
 
-## Почему без DI-фреймворка
+## Why no DI framework
 
-На четыре модуля и три сервиса полноценный DI-фреймворк (Swinject,
-Needle и т.п.) — избыточная сложность: их основная ценность раскрывается
-на десятках сервисов с ветвящимися зависимостями и разными жизненными
-циклами (singleton/transient/scoped), а сейчас у нас плоский список из
-трёх сервисов с одним и тем же временем жизни — весь сеанс работы
-приложения.
+For four modules and three services, a full DI framework (Swinject,
+Needle, etc.) is more complexity than it's worth: their real value shows
+up with dozens of services with branching dependencies and different
+lifetimes (singleton/transient/scoped), while right now we have a flat
+list of three services sharing the same lifetime — the whole app
+session.
 
-Вместо этого — обычный `final class`, один экземпляр которого создаётся
-единожды в `SceneDelegate` и передаётся координаторам сверху вниз явным
-параметром конструктора:
+Instead, it's a plain `final class`, one instance of which is created
+once in `SceneDelegate` and passed down to coordinators as an explicit
+constructor parameter:
 
 ```
 SceneDelegate
@@ -40,12 +40,12 @@ SceneDelegate
         → HomeViewModel(userService:, slotStateStore:)
 ```
 
-## Правило: явная передача, а не `.shared`
+## Rule: explicit passing, not `.shared`
 
-Каждый координатор получает **весь** контейнер, но передаёт во ViewModel
-только то, что ей реально нужно — `HomeCoordinator` не отдаёт
-`HomeViewModel` весь `AppDependencyContainer`, а достаёт из него два
-конкретных свойства:
+Each coordinator receives the **whole** container, but only passes the
+ViewModel what it actually needs — `HomeCoordinator` doesn't hand
+`HomeViewModel` the entire `AppDependencyContainer`, it pulls out two
+specific properties:
 
 ```swift
 let viewModel = HomeViewModel(
@@ -54,32 +54,32 @@ let viewModel = HomeViewModel(
 )
 ```
 
-Так у `HomeViewModel` в сигнатуре инициализатора сразу видно, от чего она
-зависит — не нужно лезть внутрь тела класса, чтобы понять это. Это же
-делает моки в тестах honest: `HomeViewModelTests` собирает
+That way `HomeViewModel`'s initializer signature makes its dependencies
+visible immediately — no need to dig into the class body to figure that
+out. It also keeps test mocks honest: `HomeViewModelTests` builds
 `HomeViewModel(userService: MockUserService(), slotStateStore: SlotStateStore())`
-и точно знает, что больше ViewModel ничего не потребуется.
+and knows exactly that nothing else will be required by the ViewModel.
 
-По той же причине сервисы не объявлены как `static let shared` —
-статический синглтон нельзя подменить в тесте на мок, потому что на него
-может быть множество ссылок по всему коду, и все они "видят" один и тот
-же экземпляр в обход инициализатора.
+For the same reason, services aren't declared as `static let shared` — a
+static singleton can't be swapped for a mock in a test, because it can
+be referenced from anywhere in the code, and all of those references
+"see" the same instance regardless of the initializer.
 
-## Исключение: `SlotStateStore`
+## The exception: `SlotStateStore`
 
-`SlotStateStore` — единственный сервис, для которого разделяемое
-состояние является частью его смысла (см. `docs/state-management.md`,
-появится в M6): и `HomeViewModel`, и будущий `OrdersViewModel` должны
-видеть один и тот же статус слота. Это достигается не через `.shared`
-синглтон, а через то, что `AppDependencyContainer` создаёт **один**
-экземпляр `SlotStateStore` и раздаёт эту же ссылку всем, кому она нужна —
-разделяемость обеспечена временем жизни контейнера, а не статическим
-доступом.
+`SlotStateStore` is the only service where shared state is the whole
+point (see `docs/state-management.md`, coming in M6): both
+`HomeViewModel` and the future `OrdersViewModel` need to see the same
+slot status. This is achieved not through a `.shared` singleton, but by
+`AppDependencyContainer` creating **one** instance of `SlotStateStore`
+and handing that same reference to everyone who needs it — sharing comes
+from the container's lifetime, not from static access.
 
-## Точка расширения
+## Extension point
 
-Когда сервисов станет больше десятка и начнут появляться сервисы с разным
-временем жизни (например, что-то per-screen, а не на весь сеанс) — это
-сигнал пересмотреть подход и, возможно, ввести фабричные замыкания
-(`() -> SomeService`) вместо готовых экземпляров, либо облегчённый DI. До
-этого момента плоский контейнер держит код читаемым без лишней магии.
+Once there are more than a dozen services and some start needing
+different lifetimes (e.g. something per-screen rather than per-session)
+— that's the signal to revisit this approach and possibly introduce
+factory closures (`() -> SomeService`) instead of ready-made instances,
+or a lightweight DI setup. Until then, the flat container keeps the code
+readable without extra magic.

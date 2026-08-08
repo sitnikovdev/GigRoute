@@ -1,13 +1,14 @@
 # Base MVVM: Observable, BaseViewModel, BaseViewController
 
-## Зачем свой Observable, а не Combine/RxSwift
+## Why a custom Observable instead of Combine/RxSwift
 
-`Observable<T>` — минимальная bindable-обёртка на ~15 строк, без внешних
-зависимостей. На старте проекта, с четырьмя простыми экранами, полноценный
-Combine/Rx — это лишний слой абстракции и лишняя кривая обучения. Интерфейс
-у `Observable` предельно узкий (`value` + `bind`), поэтому его тривиально
-заменить на `@Published`-обёртку над Combine, если сложность экранов
-вырастет — код во ViewModel/ViewController менять почти не придётся.
+`Observable<T>` is a minimal bindable wrapper, ~15 lines, no external
+dependencies. At the project's current stage, with four simple screens,
+a full Combine/Rx setup is an extra layer of abstraction and an extra
+learning curve. `Observable`'s interface is deliberately narrow (`value`
++ `bind`), so it's trivial to swap for a `@Published` wrapper over
+Combine if screen complexity grows — ViewModel/ViewController code
+barely needs to change.
 
 ## `Observable<T>`
 
@@ -27,20 +28,21 @@ final class Observable<Value> {
 
     func bind(_ observer: @escaping (Value) -> Void) {
         self.observer = observer
-        observer(value)  // файрит сразу текущим значением
+        observer(value)  // fires immediately with the current value
     }
 }
 ```
 
-Важный момент: `bind` вызывает переданное замыкание **немедленно**, с уже
-имеющимся значением. Это устраняет целый класс багов "экран показал
-пустоту, пока не пришло первое обновление" — UI всегда видит актуальное
-состояние сразу после подписки, а не только следующее изменение.
+Important detail: `bind` calls the passed closure **immediately**, with
+whatever value already exists. This eliminates a whole class of "the
+screen showed an empty state until the first update arrived" bugs — the
+UI always sees the current state right after subscribing, not just the
+next change.
 
-Ограничение (осознанное, на вырост): один `Observable` — один подписчик.
-Для наших ViewModel этого достаточно (у каждого поля ровно один
-`ViewController`-подписчик). Если понадобится multicast — это как раз
-повод перейти на Combine, а не наращивать `Observable` вручную.
+Limitation (deliberate, room to grow): one `Observable` supports one
+subscriber. That's enough for our ViewModels (each field has exactly one
+`ViewController` subscriber). If multicast is ever needed, that's the
+signal to move to Combine rather than growing `Observable` by hand.
 
 ## `BaseViewModel`
 
@@ -52,13 +54,13 @@ protocol BaseViewModel: AnyObject {
 }
 ```
 
-Единственное обязательство — точка входа, которую вызывает
-`ViewController` при загрузке. Внутри `onViewDidLoad()` конкретная
-ViewModel обычно подписывается на нужные stores/сервисы и инициирует
-загрузку данных (см. `HomeViewModel.onViewDidLoad()` — подписка на
-`SlotStateStore` + асинхронная загрузка пользователя).
+The only requirement is an entry point the `ViewController` calls on
+load. Inside `onViewDidLoad()`, a concrete ViewModel typically subscribes
+to the stores/services it needs and kicks off data loading (see
+`HomeViewModel.onViewDidLoad()` — subscribing to `SlotStateStore` +
+loading the user asynchronously).
 
-Здесь же объявлен вспомогательный enum для состояния экрана:
+A helper enum for screen state is declared alongside it:
 
 ```swift
 enum ViewState<Content> {
@@ -69,13 +71,13 @@ enum ViewState<Content> {
 }
 ```
 
-Использовать его не обязательно — ViewModel вправе объявлять собственные
-`Observable`-поля вместо одного общего `state` (так, кстати, устроен
-`HomeViewModel`: `greeting`, `slotButtonTitle`, `isOnSlot` — три отдельных
-поля вместо одного `ViewState`, потому что у экрана несколько независимых
-кусков состояния). `ViewState` пригождается там, где у экрана один
-осмысленный "статус загрузки" целиком — как в текущих стабах Orders/
-Messages/Profile.
+Using it isn't mandatory — a ViewModel is free to declare its own
+`Observable` fields instead of one shared `state` (that's actually how
+`HomeViewModel` is built: `greeting`, `slotButtonTitle`, `isOnSlot` — three
+separate fields instead of one `ViewState`, because the screen has
+several independent pieces of state). `ViewState` earns its keep where a
+screen has a single, meaningful "loading status" as a whole — like the
+current Orders/Messages/Profile stubs.
 
 ## `BaseViewController`
 
@@ -97,22 +99,24 @@ class BaseViewController: UIViewController {
 }
 ```
 
-Три override-точки — сознательно разделены, а не слиты в один
-`viewDidLoad()`:
+Three override points — deliberately kept separate rather than merged
+into one `viewDidLoad()`:
 
-1. **`setupViews()`** — `addSubview`, конфигурация внешнего вида
-   (`textColor`, `font`, `cornerRadius` и т.п.).
-2. **`setupConstraints()`** — только `SnapKit`-констрейнты. Разделение
-   "что добавили" и "как расположили" ускоряет чтение файла сверху вниз:
-   сначала видно набор элементов экрана, потом — их геометрию.
-3. **`bindViewModel()`** — подписки на `Observable`-поля ViewModel.
+1. **`setupViews()`** — `addSubview`, appearance configuration
+   (`textColor`, `font`, `cornerRadius`, etc.).
+2. **`setupConstraints()`** — SnapKit constraints only. Separating "what
+   got added" from "how it's laid out" speeds up reading the file
+   top-to-bottom: first you see the set of elements on screen, then their
+   geometry.
+3. **`bindViewModel()`** — subscriptions to the ViewModel's `Observable`
+   fields.
 
-Конкретный `ViewController` переопределяет нужные методы и не трогает
-`viewDidLoad()` вовсе (кроме единственного места, где вызывается
-`viewModel.onViewDidLoad()` — см. пример ниже), либо вызывает
-`super.viewDidLoad()` первым, если нужно что-то сделать раньше.
+A concrete `ViewController` overrides the methods it needs and doesn't
+touch `viewDidLoad()` at all (except for the one place that calls
+`viewModel.onViewDidLoad()` — see the example below), or calls
+`super.viewDidLoad()` first if something needs to happen earlier.
 
-## Как это работает вместе — на примере `HomeViewController`
+## How it all fits together — the `HomeViewController` example
 
 ```swift
 final class HomeViewController: BaseViewController {
@@ -120,7 +124,7 @@ final class HomeViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()          // 1. setupViews / setupConstraints / bindViewModel
-        viewModel.onViewDidLoad()    // 2. ViewModel начинает работу — грузит юзера, подписывается на слот
+        viewModel.onViewDidLoad()    // 2. ViewModel starts working — loads the user, subscribes to the slot
     }
 
     override func setupViews() {
@@ -144,18 +148,18 @@ final class HomeViewController: BaseViewController {
 }
 ```
 
-Порядок важен: `bindViewModel()` вызывается из `super.viewDidLoad()`
-**до** `viewModel.onViewDidLoad()` — то есть подписки уже готовы к
-моменту, когда ViewModel начнёт публиковать значения. Если поменять
-порядок местами, первые обновления (например, начальный `"Загрузка..."`)
-будет некому поймать.
+The order matters: `bindViewModel()` is called from `super.viewDidLoad()`
+**before** `viewModel.onViewDidLoad()` — meaning subscriptions are
+already in place by the time the ViewModel starts publishing values. If
+the order were swapped, the first updates (e.g. the initial
+`"Loading..."`) would have no one to catch them.
 
-## Тестируемость
+## Testability
 
-Так как ViewModel не знает про `UIKit` (никаких импортов `UIKit` в
-`HomeViewModel.swift`), её можно тестировать без запуска симулятора —
-достаточно `XCTest` + подписка на `Observable` напрямую, как в
-`HomeViewModelTests`:
+Since a ViewModel knows nothing about `UIKit` (no `import UIKit` in
+`HomeViewModel.swift`), its logic can be tested without launching the
+simulator — plain `XCTest` plus subscribing to an `Observable` directly
+is enough, as in `HomeViewModelTests`:
 
 ```swift
 var titles: [String] = []
