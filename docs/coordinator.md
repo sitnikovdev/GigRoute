@@ -1,19 +1,19 @@
 # Coordinator
 
-## Проблема, которую решает паттерн
+## The problem the pattern solves
 
-Без Coordinator `UIViewController` обычно отвечает за две несвязанные
-вещи: что показать на экране и куда перейти дальше. Это раздувает
-контроллеры и делает навигацию непереиспользуемой — например, экран
-"Расписание" может понадобиться и как часть таба "Главная", и как модальный
-экран из "Заказов", но если переход к нему захардкожен внутри
-`HomeViewController`, использовать его из другого места нельзя без
-копипасты.
+Without a Coordinator, `UIViewController` usually ends up owning two
+unrelated things: what to show on screen and where to go next. That
+bloats controllers and makes navigation non-reusable — for example, a
+"Schedule" screen might be needed both as part of the "Home" tab and as
+a modal from "Orders", but if the transition to it is hardcoded inside
+`HomeViewController`, you can't reuse it elsewhere without copy-pasting.
 
-Coordinator забирает у ViewController всё, что касается "куда идём
-дальше", оставляя ему только UI и биндинг к ViewModel.
+A Coordinator takes everything related to "where do we go next" away
+from the ViewController, leaving it with only UI and binding to the
+ViewModel.
 
-## Протокол
+## The protocol
 
 `Sources/GigRoute/Core/Coordinator/Coordinator.swift`
 
@@ -25,16 +25,17 @@ protocol Coordinator: AnyObject {
 }
 ```
 
-- **`start()`** — точка входа: координатор создаёт первый экран флоу и
-  показывает его.
-- **`childCoordinators`** — координатор держит сильную ссылку на дочерние
-  координаторы, которые сам запустил. Без этого дочерний координатор,
-  созданный как локальная переменная, был бы освобождён ARC сразу после
-  выхода из функции — и колбэки от его экранов перестали бы срабатывать.
-- **`navigationController`** — стек экранов, которым управляет именно этот
-  координатор.
+- **`start()`** — entry point: the coordinator creates the flow's first
+  screen and presents it.
+- **`childCoordinators`** — the coordinator holds a strong reference to
+  any child coordinators it started itself. Without this, a child
+  coordinator created as a local variable would be released by ARC right
+  after the function returns — and callbacks from its screens would stop
+  firing.
+- **`navigationController`** — the screen stack this particular
+  coordinator manages.
 
-## Иерархия в проекте
+## Hierarchy in the project
 
 ```mermaid
 graph TD
@@ -51,9 +52,10 @@ graph TD
 
 ### `AppCoordinator`
 
-Корень дерева. Создаётся в `SceneDelegate`, держит `UIWindow`, решает,
-какой флоу показать первым (сейчас — всегда таб-бар; но именно сюда
-позже войдёт, например, ветвление на экран логина, если он появится).
+The root of the tree. Created in `SceneDelegate`, holds the `UIWindow`,
+decides which top-level flow to show first (currently always the tab
+bar; this is where, say, branching to a login screen would go later if
+one gets added).
 
 ```swift
 func start() {
@@ -68,12 +70,12 @@ func start() {
 
 ### `TabBarCoordinator`
 
-Создаёт `UITabBarController` и по одному координатору на таб. У каждого
-таба — собственный `UINavigationController`, поэтому пуш экрана внутри
-"Заказов" не задевает стек "Главной": переключение таба туда-обратно
-сохраняет позицию в каждом стеке независимо (стандартное поведение
-`UITabBarController`, которое мы явно не ломаем, оборачивая каждый таб в
-свой `UINavigationController`).
+Creates the `UITabBarController` and one coordinator per tab. Each tab
+gets its own `UINavigationController`, so a push inside "Orders" doesn't
+touch the "Home" stack: switching tabs back and forth preserves the
+position in each stack independently (standard `UITabBarController`
+behavior, which we're careful not to break by wrapping each tab in its
+own `UINavigationController`).
 
 ```swift
 private func makeTab(coordinator: Coordinator, title: String, image: UIImage?) -> UINavigationController {
@@ -86,10 +88,11 @@ private func makeTab(coordinator: Coordinator, title: String, image: UIImage?) -
 }
 ```
 
-### Координаторы модулей (`HomeCoordinator` и т.д.)
+### Module coordinators (`HomeCoordinator` etc.)
 
-Каждый — тонкая обёртка: создаёт `ViewModel` с нужными зависимостями,
-создаёт `ViewController`, кладёт его в свой `navigationController`.
+Each one is a thin wrapper: creates the `ViewModel` with the dependencies
+it needs, creates the `ViewController`, puts it into its own
+`navigationController`.
 
 ```swift
 final class HomeCoordinator: Coordinator {
@@ -104,15 +107,15 @@ final class HomeCoordinator: Coordinator {
 }
 ```
 
-Когда в M2/M3/M4 появятся переходы на detail-экраны (например, тап по
-сообщению в "Сообщениях" открывает детали), они добавляются именно сюда —
-`ViewController` вызывает замыкание/делегат, который слушает
-`MessagesCoordinator`, а не создаёт следующий `ViewController` сам.
+When M2/M3/M4 add transitions to detail screens (e.g. tapping a message
+in "Messages" opens its details), they get added right here — the
+`ViewController` calls a closure/delegate that the `MessagesCoordinator`
+listens to, rather than creating the next `ViewController` itself.
 
-## Правило, которое стоит соблюдать дальше
+## The rule to keep following
 
-`UIViewController` **никогда** не создаёт другой `UIViewController` и не
-вызывает `navigationController?.pushViewController` напрямую. Переход
-всегда идёт через колбэк наверх, в Coordinator. Если видите
-`present`/`push` внутри `ViewController` — это сигнал, что логика должна
-переехать в координатор.
+A `UIViewController` **never** creates another `UIViewController` and
+never calls `navigationController?.pushViewController` directly. A
+transition always goes through a callback up to the Coordinator. If you
+see `present`/`push` inside a `ViewController`, that's a signal the
+logic should move to the coordinator.

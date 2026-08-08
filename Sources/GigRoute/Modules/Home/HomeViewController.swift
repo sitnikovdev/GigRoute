@@ -5,6 +5,30 @@ final class HomeViewController: BaseViewController {
 
     private let viewModel: HomeViewModel
 
+    private let previewOffers = [
+        (
+            title: "Специальное предложение",
+            subtitle: "Заработайте больше на следующем слоте"
+        ),
+        (
+             title: "Больше заказов",
+             subtitle: "Доступны новые заказы рядом с вами"
+        ),
+        (
+            title: "Повышенный заработок",
+            subtitle: "Получите бонус за активность"
+        )
+    ]
+
+    private let scrollView = UIScrollView()
+
+    private let contentStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 16
+        return stackView
+    }()
+
     private let greetingLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 28, weight: .bold)
@@ -13,12 +37,50 @@ final class HomeViewController: BaseViewController {
         return label
     }()
 
+    private let mapCardView = HomeMapCardView()
+    private let scheduleCardView = ScheduleCardView()
+    private let walletCardView = WalletCardView()
+
+    private let offersTitleLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Для вас"
+        label.font = .systemFont(ofSize: 20, weight: .bold)
+        label.textColor = AppColors.primaryText
+        return label
+    }()
+
+    private lazy var offersCollectionView: UICollectionView = {
+        let collectionView = UICollectionView(
+            frame: .zero,
+            collectionViewLayout: makeOffersLayout()
+        )
+
+        collectionView.backgroundColor = .clear
+        collectionView.showsHorizontalScrollIndicator = false
+        collectionView.contentInsetAdjustmentBehavior = .never
+
+        collectionView.register(
+            OfferCollectionViewCell.self,
+            forCellWithReuseIdentifier: OfferCollectionViewCell.reuseIdentifier
+        )
+
+        collectionView.dataSource = self
+
+        return collectionView
+    }()
+
     private let slotButton: UIButton = {
         var configuration = UIButton.Configuration.filled()
         configuration.baseBackgroundColor = .white
         configuration.baseForegroundColor = .black
         configuration.cornerStyle = .large
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20)
+        configuration.contentInsets = NSDirectionalEdgeInsets(
+            top: 16,
+            leading: 20,
+            bottom: 16,
+            trailing: 20
+        )
+
         let button = UIButton(configuration: configuration)
         button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
         return button
@@ -40,20 +102,43 @@ final class HomeViewController: BaseViewController {
     }
 
     override func setupViews() {
-        view.addSubview(greetingLabel)
-        view.addSubview(slotButton)
-        slotButton.addTarget(self, action: #selector(slotButtonTapped), for: .touchUpInside)
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentStackView)
+
+        contentStackView.addArrangedSubview(greetingLabel)
+        contentStackView.addArrangedSubview(mapCardView)
+        contentStackView.addArrangedSubview(scheduleCardView)
+        contentStackView.addArrangedSubview(walletCardView)
+        contentStackView.addArrangedSubview(offersTitleLabel)
+        contentStackView.addArrangedSubview(offersCollectionView)
+        contentStackView.addArrangedSubview(slotButton)
+
+        slotButton.addTarget(
+            self,
+            action: #selector(slotButtonTapped),
+            for: .touchUpInside
+        )
     }
 
     override func setupConstraints() {
-        greetingLabel.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(16)
-            make.leading.trailing.equalToSuperview().inset(20)
+        scrollView.snp.makeConstraints { make in
+            make.edges.equalTo(view.safeAreaLayoutGuide)
+        }
+
+        contentStackView.snp.makeConstraints { make in
+            make.edges.equalToSuperview().inset(20)
+            make.width.equalTo(scrollView.frameLayoutGuide).offset(-40)
+        }
+
+        mapCardView.snp.makeConstraints { make in
+            make.height.equalTo(180)
+        }
+
+        offersCollectionView.snp.makeConstraints { make in
+            make.height.equalTo(130)
         }
 
         slotButton.snp.makeConstraints { make in
-            make.top.equalTo(greetingLabel.snp.bottom).offset(24)
-            make.leading.trailing.equalToSuperview().inset(20)
             make.height.equalTo(56)
         }
     }
@@ -68,8 +153,63 @@ final class HomeViewController: BaseViewController {
         }
     }
 
+    private func makeOffersLayout() -> UICollectionViewLayout {
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .fractionalHeight(1.0)
+        )
+
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .absolute(280),
+            heightDimension: .absolute(130)
+        )
+
+        let group = NSCollectionLayoutGroup.horizontal(
+            layoutSize: groupSize,
+            subitems: [item]
+        )
+
+        let section = NSCollectionLayoutSection(group: group)
+        section.interGroupSpacing = 12
+        section.orthogonalScrollingBehavior = .continuous
+
+        return UICollectionViewCompositionalLayout(section: section)
+    }
+
     @objc
     private func slotButtonTapped() {
         viewModel.slotButtonTapped()
+    }
+}
+
+extension HomeViewController: UICollectionViewDataSource {
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        numberOfItemsInSection section: Int
+    ) -> Int {
+        previewOffers.count
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView,
+        cellForItemAt indexPath: IndexPath
+    ) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: OfferCollectionViewCell.reuseIdentifier,
+            for: indexPath
+        ) as? OfferCollectionViewCell else {
+            return UICollectionViewCell()
+        }
+
+        let offer = previewOffers[indexPath.item]
+
+        cell.configure(
+            title: offer.title,
+            subtitle: offer.subtitle
+        )
+        return cell
     }
 }
