@@ -5,10 +5,18 @@ final class HomeViewModel: BaseViewModel {
 
     let schedule: Observable<ScheduleViewState>
 
+    let wallet: Observable<WalletViewState> = Observable(
+        WalletViewState(
+            balance: "",
+            bonusPoints: ""
+        )
+    )
+
 
     private let userService: UserService
     private let slotStateStore: SlotStateStore
     private let slotService: SlotService
+    private let walletService: WalletService
 
     let greeting: Observable<String> = Observable("")
 
@@ -21,11 +29,13 @@ final class HomeViewModel: BaseViewModel {
 
     init(userService: UserService,
          slotStateStore: SlotStateStore,
-         slotService: SlotService
+         slotService: SlotService,
+         walletService: WalletService
          ) {
         self.userService = userService
         self.slotStateStore = slotStateStore
         self.slotService = slotService
+        self.walletService = walletService
         self.schedule = Observable(
             ScheduleViewState(
                 date: "",
@@ -38,6 +48,7 @@ final class HomeViewModel: BaseViewModel {
         observeSlotState()
         loadUser()
         loadSchedule()
+        loadWallet()
     }
 
     func slotButtonTapped() {
@@ -71,6 +82,40 @@ final class HomeViewModel: BaseViewModel {
         case 18..<23: return "Добрый вечер"
         default: return "Доброй ночи"
         }
+    }
+
+    private func loadWallet() {
+        Task { [weak self] in
+            guard let self else { return }
+
+            let result = await walletService.fetchWallet()
+
+            switch result {
+            case .success(let wallet):
+                self.wallet.value = WalletViewState(
+                    balance: Self.formatBalance(wallet.balance),
+                    bonusPoints: "⭐ \(wallet.bonusPoints) бонусов"
+                )
+
+            case .failure:
+                self.wallet.value = WalletViewState(
+                    balance: "Не удалось загрузить",
+                    bonusPoints: ""
+                )
+            }
+        }
+    }
+
+    private static func formatBalance(_ balance: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 0
+
+        let number = balance as NSDecimalNumber
+
+        return "₽ \(formatter.string(from: number) ?? "0")"
     }
 
     private func loadSchedule() {

@@ -15,8 +15,10 @@ final class HomeCoordinator: Coordinator {
         let viewModel = HomeViewModel(
             userService: dependencies.userService,
             slotStateStore: dependencies.slotStateStore,
-            slotService: dependencies.slotService
+            slotService: dependencies.slotService,
+            walletService: dependencies.walletService
         )
+
         let viewController = HomeViewController(viewModel: viewModel)
         navigationController.setViewControllers([viewController], animated: false)
     }

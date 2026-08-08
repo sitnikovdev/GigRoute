@@ -9,6 +9,7 @@ final class AppDependencyContainer {
     let userService: UserService
     let slotStateStore: SlotStateStore
     let slotService: SlotService
+    let walletService: WalletService
 
     init() {
         // Placeholder base URL until a real backend exists.
@@ -18,5 +19,6 @@ final class AppDependencyContainer {
         self.userService = LocalUserService()
         self.slotStateStore = SlotStateStore()
         self.slotService = LocalSlotService()
+        self.walletService = LocalWalletService()
     }
 }

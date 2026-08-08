@@ -44,6 +44,11 @@ final class WalletCardView: UIView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    func configure(with state: WalletViewState) {
+        balanceLabel.text = state.balance
+        bonusLabel.text = state.bonusPoints
+    }
     
     
     private func setupViews() {
@@ -61,20 +66,12 @@ final class WalletCardView: UIView {
         balanceLabel.snp.makeConstraints { make in
             make.top.equalTo(titleLabel.snp.bottom).offset(8)
             make.leading.equalTo(titleLabel)
-        }
-        
-        bonusLabel.snp.makeConstraints { make in
-            make.top.equalTo(titleLabel.snp.bottom).offset(8)
-            make.leading.equalTo(titleLabel)
+            make.bottom.equalToSuperview().inset(16)
         }
         
         bonusLabel.snp.makeConstraints { make in
             make.centerY.equalTo(balanceLabel)
-            make.trailing.equalToSuperview().inset(16)
-        }
-        
-        balanceLabel.snp.makeConstraints { make in
-            make.bottom.equalToSuperview().inset(16)
+            make.trailing.equalTo(titleLabel)
         }
         
     }
