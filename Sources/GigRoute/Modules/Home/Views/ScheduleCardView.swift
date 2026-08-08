@@ -46,6 +46,11 @@ final class ScheduleCardView: UIView {
         fatalError("init(coder:) has not been implementd")
     }
 
+    func configure(with state: ScheduleViewState) {
+        dateLabel.text = state.date
+        cityLabel.text = state.city
+    }
+
 
     private func setupViews() {
         addSubview(titleLabel)

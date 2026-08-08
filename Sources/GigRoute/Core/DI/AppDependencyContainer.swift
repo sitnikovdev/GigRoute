@@ -8,12 +8,17 @@ final class AppDependencyContainer {
     let networkService: NetworkService
     let userService: UserService
     let slotStateStore: SlotStateStore
+    let slotService: SlotService
+    let walletService: WalletService
 
     init() {
         // Placeholder base URL until a real backend exists.
         let baseURL = URL(string: "https://api.gigroute.example.com")!
+
         self.networkService = URLSessionNetworkService(baseURL: baseURL)
         self.userService = LocalUserService()
         self.slotStateStore = SlotStateStore()
+        self.slotService = LocalSlotService()
+        self.walletService = LocalWalletService()
     }
 }
