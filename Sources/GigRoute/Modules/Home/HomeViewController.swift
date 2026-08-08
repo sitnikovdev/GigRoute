@@ -151,6 +151,10 @@ final class HomeViewController: BaseViewController {
         viewModel.slotButtonTitle.bind { [weak self] title in
             self?.slotButton.configuration?.title = title
         }
+
+        viewModel.schedule.bind { [weak self] state in
+            self?.scheduleCardView.configure(with: state)
+        }
     }
 
     private func makeOffersLayout() -> UICollectionViewLayout {
